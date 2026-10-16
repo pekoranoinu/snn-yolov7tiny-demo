@@ -1,0 +1,376 @@
+<!doctype html>
+<html lang="zh-Hant"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1">
+<title>SNN demo 影片</title>
+<style>
+:root { --bg:#f7f6f2; --panel:#fff; --text:#2c2c2a; --text2:#5f5e5a; --text3:#888780; --border:#e3e1d9; --accent:#534ab7;
+  --good-bg:#EAF3DE; --good:#27500A; --mid-bg:#FAEEDA; --mid:#633806; --bad-bg:#FCEBEB; --bad:#791F1F; }
+@media (prefers-color-scheme: dark) { :root { --bg:#1a1a19; --panel:#222221; --text:#ecebe6; --text2:#b9b7ae; --text3:#8d8b84; --border:#383836;
+  --accent:#afa9ec; --good-bg:#27500A; --good:#C0DD97; --mid-bg:#633806; --mid:#FAC775; --bad-bg:#791F1F; --bad:#F7C1C1; } }
+* { box-sizing:border-box; }
+body { margin:0; background:var(--bg); color:var(--text); font:14.5px/1.6 "Segoe UI","Noto Sans TC","Microsoft JhengHei",sans-serif; }
+.top { position:sticky; top:0; z-index:5; background:var(--panel); border-bottom:1px solid var(--border); padding:10px 24px; display:flex; flex-wrap:wrap; gap:8px 18px; align-items:baseline; }
+.top b { font-size:16px; } .top a { color:var(--accent); text-decoration:none; } .top label { color:var(--text2); font-size:13px; cursor:pointer; }
+main { padding:8px 24px 60px; max-width:1500px; }
+.intro { color:var(--text2); font-size:13.5px; max-width:1100px; } .intro li { margin:2px 0; }
+table.pt { border-collapse:collapse; margin:10px 0 4px; font-size:13.5px; }
+table.pt th, table.pt td { padding:5px 12px; text-align:right; border-bottom:1px solid var(--border); }
+table.pt th:first-child, table.pt td:first-child { text-align:left; }
+table.pt thead th { border-top:2px solid var(--text2); border-bottom:1px solid var(--text2); font-weight:600; }
+table.pt tbody tr:last-child td { border-bottom:2px solid var(--text2); } table.pt tr.sub td { color:var(--text2); }
+.tnote { color:var(--text2); font-size:13px; max-width:1100px; margin:4px 0 0; }
+h2 { margin:26px 0 10px; font-size:19px; } h2 small { color:var(--text3); font-weight:400; font-size:13px; margin-left:8px; }
+.grid { display:grid; grid-template-columns:repeat(auto-fill,minmax(560px,1fr)); gap:16px; }
+.card { background:var(--panel); border:1px solid var(--border); border-radius:12px; padding:12px 14px; }
+.card h3 { margin:0; font-size:15px; } .meta { color:var(--text3); font-size:12px; margin:2px 0 4px; } .card header { margin-bottom:6px; }
+video { width:100%; border-radius:8px; background:#000; display:block; }
+.row { display:flex; gap:10px; margin-top:7px; } .lab { flex:0 0 64px; color:var(--text3); font-size:12.5px; padding-top:2px; }
+.vals { display:flex; flex-wrap:wrap; gap:5px; } .small { font-size:13px; color:var(--text2); display:block; }
+.cls { padding:1px 9px; border-radius:999px; font-size:13px; } .cls small { opacity:.8; }
+.cls.good { background:var(--good-bg); color:var(--good); } .cls.mid { background:var(--mid-bg); color:var(--mid); } .cls.bad { background:var(--bad-bg); color:var(--bad); }
+.lic { margin-top:8px; font-size:11.5px; color:var(--text3); }
+.card.hide { display:none; }
+@media (max-width:640px) { .grid { grid-template-columns:1fr; } main, .top { padding-left:16px; padding-right:16px; } table.pt { font-size:12px; } }
+</style></head><body>
+<div class="top"><b>T0⁺ v7-tiny SNN（D=4／2 全整數）· demo 影片（34 支）</b><a href="#taiwan_dashcam">台灣行車視角（4）</a><a href="#road">道路（機車＋行人）（13）</a><a href="#voc_other">其他 VOC 類別（12）</a><a href="#vkitti2">vKITTI2 合成行車（5）</a>
+<label><input type="checkbox" id="weak"> 只看有預期類別低於 90% 的</label><label><input type="checkbox" id="gap"> 只看比 ANN 少 10 分以上的</label></div>
+<main>
+<ul class="intro">
+<li>模型：T0⁺ YOLOv7-tiny（6.07 M）轉成整數脈衝網路：T＝1，LeakyReLU 拆成正 4 階＋負 2 階兩種神經元，每通道整數門檻，INT8 權重；偵測頭輸出 16 位元後由主機解框。VOC07 test mAP@0.5 0.798、mAP@0.5:0.95 0.531（它自己的浮點 ANN 是 0.848／0.607）。影片裡每一幀都走這條全整數路徑，和量出 0.798 的引擎逐位元相同。</li>
+<li>設定（和之前的 demo 相同）：letterbox 640，conf 0.3，NMS IoU 0.45，每一幀都跑。影片沒有標註框，數字是「有框的畫面比例 · 每張平均框數 · ANN 同一支的有框比例」，不是 mAP。綠＝≥90%，黃＝30–90%，紅＝&lt;30%。</li>
+<li>能耗是運算次數的估計（INT8 常數）：第 0 層吃像素的乘加 0.23 pJ，之後每個脈衝 × 扇出各算一次加法 0.1 pJ；對照是同一張圖跑 INT8 ANN 的乘加。不含記憶體存取。</li>
+
+</ul>
+<p class="tnote"><b>訓練資料：四個模型都只用 PASCAL VOC 訓練</b>（VOC2007＋2012 trainval，16,551 張、20 類；從 COCO 預訓練的權重開始），在 VOC2007 test（4,952 張）上評估。下面的影片都不在訓練資料裡。</p>
+<table class="pt"><thead><tr><th>模型</th><th>訓練資料</th><th>台灣行車視角 ↑</th><th>道路（機車＋行人） ↑</th><th>其他 VOC 類別 ↑</th><th>vKITTI2 合成行車 ↑</th></tr></thead><tbody><tr><td><b>T0⁺ v7-tiny ANN fp32（基準；VOC07 0.848）</b></td><td>PASCAL VOC 07＋12</td><td>60%</td><td>61%</td><td>70%</td><td>86%</td></tr><tr><td>T0⁺ v7-tiny SNN D=4／2 全整數（本頁；VOC07 0.798）</td><td>PASCAL VOC 07＋12</td><td>55%</td><td>57%</td><td>64%</td><td>80%</td></tr><tr class="sub"><td>參考：V6N 剪寬度 2.99 M ANN（VOC07 0.817）</td><td>PASCAL VOC 07＋12</td><td>53%</td><td>56%</td><td>63%</td><td>83%</td></tr><tr class="sub"><td>參考：v7-tiny 剪枝 2.48 M SNN D=8／2（VOC07 0.790）</td><td>PASCAL VOC 07＋12</td><td>61%</td><td>61%</td><td>71%</td><td>87%</td></tr>
+<tr class="sub"><td>SNN 比 ANN 少 10 分以上的影片</td><td></td><td>2 / 4</td><td>6 / 13</td><td>5 / 12</td><td>1 / 5</td></tr></tbody></table>
+<p class="tnote">表中數字＝各組所有「影片 × 預期類別」的有框畫面比例平均；第一列是基準（同一個網路的浮點 ANN），灰字兩列是之前 demo 的模型。</p>
+<table class="pt"><thead><tr><th>每幀（平均）</th><th>台灣行車視角</th><th>道路（機車＋行人）</th><th>其他 VOC 類別</th><th>vKITTI2 合成行車</th></tr></thead><tbody>
+<tr><td>INT8 ANN 的能耗 mJ（基準）</td><td>0.910</td><td>0.914</td><td>0.908</td><td>0.531</td></tr>
+<tr><td>SNN 的能耗 mJ ↓</td><td>0.402</td><td>0.407</td><td>0.390</td><td>0.228</td></tr>
+<tr><td>SNN ÷ INT8 ANN ↓</td><td>0.44×</td><td>0.45×</td><td>0.43×</td><td>0.43×</td></tr>
+<tr class="sub"><td>每神經元脈衝數</td><td>0.98</td><td>0.98</td><td>0.94</td><td>0.96</td></tr></tbody></table>
+<p class="tnote">每幀能耗依影片長度加權平均；影片的輸入是 letterbox 後的長方形（例如 640×384），所以絕對值比 VOC 的 640×640 小，看比例就好（VOC07 上是 0.41×）。</p>
+<section id="taiwan_dashcam"><h2>台灣行車視角<small>4 支</small></h2><div class="grid">
+<article class="card" data-worst="0.428" data-gap="0.119">
+  <header><h3>c01　台灣市區捷運站前，騎機車往前拍，手持</h3>
+  <div class="meta">c01_taiwan_city_scooter_pov · 642 幀 · 29.97 fps · 平均每張 4.1 個框（ANN 4.6）</div>
+  <div class="meta">每幀能耗 0.401 mJ（0.383–0.421）＝同一張圖 INT8 ANN 的 0.44× · 每神經元 0.96 個脈衝</div></header>
+  <video controls muted loop playsinline preload="metadata" src="taiwan_dashcam/c01_taiwan_city_scooter_pov.mp4"></video>
+  <div class="row"><span class="lab">預期類別</span><span class="vals"><span class="cls mid"><b>motorbike</b> 43%<small> · 0.56/張 · ANN 55%</small></span><span class="cls mid"><b>person</b> 85%<small> · 2.09/張 · ANN 86%</small></span><span class="cls mid"><b>car</b> 82%<small> · 1.45/張 · ANN 90%</small></span></span></div>
+  <div class="row"><span class="lab">其他類別</span><span class="vals small">—</span></div>
+  <div class="lic">Pexels License：Video by 宋 小天 on Pexels (attribution optional)</div>
+</article>
+<article class="card" data-worst="0.672" data-gap="0.012">
+  <header><h3>c02　台南路口，停在機車群裡、騎士眼睛高度，鏡頭不動</h3>
+  <div class="meta">c02_tainan_scooter_crowd_red_light · 658 幀 · 30.00 fps · 平均每張 8.9 個框（ANN 10.5）</div>
+  <div class="meta">每幀能耗 0.413 mJ（0.403–0.424）＝同一張圖 INT8 ANN 的 0.45× · 每神經元 1.01 個脈衝</div></header>
+  <video controls muted loop playsinline preload="metadata" src="taiwan_dashcam/c02_tainan_scooter_crowd_red_light.mp4"></video>
+  <div class="row"><span class="lab">預期類別</span><span class="vals"><span class="cls mid"><b>motorbike</b> 67%<small> · 2.24/張 · ANN 68%</small></span><span class="cls mid"><b>person</b> 68%<small> · 3.15/張 · ANN 68%</small></span><span class="cls good"><b>car</b> 98%<small> · 3.38/張 · ANN 99%</small></span></span></div>
+  <div class="row"><span class="lab">其他類別</span><span class="vals small">bus 0.07/張、aeroplane 0.05/張</span></div>
+  <div class="lic">Pixabay Content License：Video by jeffplay from Pixabay (attribution optional)</div>
+</article>
+<article class="card" data-worst="0.176" data-gap="0.174">
+  <header><h3>c03　花蓮太魯閣中橫，騎機車往前拍，山路</h3>
+  <div class="meta">c03_taroko_moped_pov · 750 幀 · 29.97 fps · 平均每張 0.9 個框（ANN 1.2）</div>
+  <div class="meta">每幀能耗 0.392 mJ（0.385–0.401）＝同一張圖 INT8 ANN 的 0.43× · 每神經元 0.96 個脈衝</div></header>
+  <video controls muted loop playsinline preload="metadata" src="taiwan_dashcam/c03_taroko_moped_pov.mp4"></video>
+  <div class="row"><span class="lab">預期類別</span><span class="vals"><span class="cls bad"><b>motorbike</b> 27%<small> · 0.27/張 · ANN 44%</small></span><span class="cls mid"><b>person</b> 36%<small> · 0.40/張 · ANN 45%</small></span><span class="cls bad"><b>car</b> 18%<small> · 0.25/張 · ANN 18%</small></span></span></div>
+  <div class="row"><span class="lab">其他類別</span><span class="vals small">—</span></div>
+  <div class="lic">CC BY 4.0：Taroko - from moped - June 18 2011 by Nesnad, CC BY 4.0, via Wikimedia Commons</div>
+</article>
+<article class="card" data-worst="0.254" data-gap="0.007">
+  <header><h3>c04　台中大坑中興嶺下坡，夜間，公車內隔擋風玻璃往前拍</h3>
+  <div class="meta">c04_taichung_bus_night_windshield · 1128 幀 · 30.00 fps · 平均每張 0.5 個框（ANN 0.5）</div>
+  <div class="meta">每幀能耗 0.403 mJ（0.390–0.416）＝同一張圖 INT8 ANN 的 0.44× · 每神經元 0.99 個脈衝</div></header>
+  <video controls muted loop playsinline preload="metadata" src="taiwan_dashcam/c04_taichung_bus_night_windshield.mp4"></video>
+  <div class="row"><span class="lab">預期類別</span><span class="vals"><span class="cls bad"><b>car</b> 25%<small> · 0.30/張 · ANN 26%</small></span></span></div>
+  <div class="row"><span class="lab">其他類別</span><span class="vals small">person 0.10/張</span></div>
+  <div class="lic">CC0：Video: Jidanni, CC0, via Wikimedia Commons (attribution optional)</div>
+</article></div></section><section id="road"><h2>道路（機車＋行人）<small>13 支</small></h2><div class="grid">
+<article class="card" data-worst="0.534" data-gap="0.171">
+  <header><h3>a01　越南 胡志明市，高架橋上整片機車；手持、會晃</h3>
+  <div class="meta">a01_hcmc_overpass_scooters · 1403 幀 · 30.00 fps · 平均每張 6.9 個框（ANN 8.0）</div>
+  <div class="meta">每幀能耗 0.400 mJ（0.379–0.422）＝同一張圖 INT8 ANN 的 0.44× · 每神經元 0.97 個脈衝</div></header>
+  <video controls muted loop playsinline preload="metadata" src="road/a01_hcmc_overpass_scooters.mp4"></video>
+  <div class="row"><span class="lab">預期類別</span><span class="vals"><span class="cls mid"><b>motorbike</b> 53%<small> · 0.98/張 · ANN 70%</small></span><span class="cls mid"><b>person</b> 90%<small> · 5.61/張 · ANN 91%</small></span></span></div>
+  <div class="row"><span class="lab">其他類別</span><span class="vals small">bus 0.14/張、car 0.09/張、train 0.08/張</span></div>
+  <div class="lic">CC BY-SA 4.0：Saigon traffic-oVbn3HeLDA0 by Karel Bilek, CC BY-SA 4.0, via Wikimedia Commons</div>
+</article>
+<article class="card" data-worst="0.034" data-gap="0.032">
+  <header><h3>a02　台灣 台中烏日 學田路平交道：機車等柵欄、台鐵電聯車通過</h3>
+  <div class="meta">a02_taichung_xuetian_crossing · 1380 幀 · 30.00 fps · 平均每張 2.3 個框（ANN 2.7）</div>
+  <div class="meta">每幀能耗 0.402 mJ（0.398–0.409）＝同一張圖 INT8 ANN 的 0.44× · 每神經元 0.96 個脈衝</div></header>
+  <video controls muted loop playsinline preload="metadata" src="road/a02_taichung_xuetian_crossing.mp4"></video>
+  <div class="row"><span class="lab">預期類別</span><span class="vals"><span class="cls bad"><b>motorbike</b> 3%<small> · 0.04/張 · ANN 6%</small></span><span class="cls good"><b>person</b> 100%<small> · 1.16/張 · ANN 100%</small></span><span class="cls bad"><b>train</b> 4%<small> · 0.04/張 · ANN 7%</small></span><span class="cls mid"><b>car</b> 75%<small> · 1.05/張 · ANN 77%</small></span></span></div>
+  <div class="row"><span class="lab">其他類別</span><span class="vals small">—</span></div>
+  <div class="lic">CC0：Video: Saimmx, CC0, via Wikimedia Commons (attribution optional)</div>
+</article>
+<article class="card" data-worst="0.017" data-gap="0.034">
+  <header><h3>a03　台灣 台北橋機車道出口的「機車瀑布」，上班尖峰</h3>
+  <div class="meta">a03_taipei_bridge_waterfall · 414 幀 · 30.00 fps · 平均每張 10.8 個框（ANN 14.1）</div>
+  <div class="meta">每幀能耗 0.489 mJ（0.439–0.499）＝同一張圖 INT8 ANN 的 0.46× · 每神經元 1.02 個脈衝</div></header>
+  <video controls muted loop playsinline preload="metadata" src="road/a03_taipei_bridge_waterfall.mp4"></video>
+  <div class="row"><span class="lab">預期類別</span><span class="vals"><span class="cls good"><b>motorbike</b> 99%<small> · 4.19/張 · ANN 100%</small></span><span class="cls good"><b>person</b> 99%<small> · 6.61/張 · ANN 100%</small></span><span class="cls bad"><b>car</b> 2%<small> · 0.02/張 · ANN 5%</small></span></span></div>
+  <div class="row"><span class="lab">其他類別</span><span class="vals small">—</span></div>
+  <div class="lic">CC BY-SA 4.0：June 2023 motorcycle waterfall on Taipei Bridge by rush hour commuters 06 by Tze Chiang Hao, CC BY-SA 4.0, via Wikimedia Commons</div>
+</article>
+<article class="card" data-worst="0.003" data-gap="0.158">
+  <header><h3>a04　印度 Raxaul 平交道，人和機車擠滿</h3>
+  <div class="meta">a04_raxaul_rail_crossing · 397 幀 · 30.00 fps · 平均每張 9.6 個框（ANN 11.3）</div>
+  <div class="meta">每幀能耗 0.407 mJ（0.391–0.417）＝同一張圖 INT8 ANN 的 0.45× · 每神經元 0.98 個脈衝</div></header>
+  <video controls muted loop playsinline preload="metadata" src="road/a04_raxaul_rail_crossing.mp4"></video>
+  <div class="row"><span class="lab">預期類別</span><span class="vals"><span class="cls bad"><b>motorbike</b> 7%<small> · 0.08/張 · ANN 23%</small></span><span class="cls good"><b>person</b> 100%<small> · 9.44/張 · ANN 100%</small></span><span class="cls bad"><b>bicycle</b> 0%<small> · 0.00/張 · ANN 0%</small></span><span class="cls bad"><b>train</b> 0%<small> · 0.00/張 · ANN 0%</small></span></span></div>
+  <div class="row"><span class="lab">其他類別</span><span class="vals small">car 0.12/張</span></div>
+  <div class="lic">CC BY-SA 4.0：A train stuck in traffic at a railway crossing in Raxaul, Bihar in 2018 by Saddam19, CC BY-SA 4.0, via Wikimedia Commons</div>
+</article>
+<article class="card" data-worst="0.012" data-gap="0.258">
+  <header><h3>a05　印度 班加羅爾 圓環，高處俯拍、固定機位，公車多</h3>
+  <div class="meta">a05_bangalore_banashankari_circle · 667 幀 · 30.00 fps · 平均每張 5.2 個框（ANN 5.3）</div>
+  <div class="meta">每幀能耗 0.421 mJ（0.407–0.434）＝同一張圖 INT8 ANN 的 0.46× · 每神經元 1.04 個脈衝</div></header>
+  <video controls muted loop playsinline preload="metadata" src="road/a05_bangalore_banashankari_circle.mp4"></video>
+  <div class="row"><span class="lab">預期類別</span><span class="vals"><span class="cls mid"><b>bus</b> 75%<small> · 2.21/張 · ANN 77%</small></span><span class="cls bad"><b>motorbike</b> 1%<small> · 0.01/張 · ANN 0%</small></span><span class="cls mid"><b>person</b> 47%<small> · 0.78/張 · ANN 72%</small></span><span class="cls mid"><b>car</b> 76%<small> · 1.88/張 · ANN 68%</small></span></span></div>
+  <div class="row"><span class="lab">其他類別</span><span class="vals small">pottedplant 0.27/張</span></div>
+  <div class="lic">CC BY-SA 4.0：Banashankari traffic circle, Banashankari, Bangalore (2024) 01 by Gpkp, CC BY-SA 4.0, via Wikimedia Commons</div>
+</article>
+<article class="card" data-worst="0.119" data-gap="0.052">
+  <header><h3>a06　印度 班加羅爾 Bellary Road，天橋俯拍；嘟嘟車多（VOC 沒這類）</h3>
+  <div class="meta">a06_bengaluru_bellary_road · 1827 幀 · 30.00 fps · 平均每張 6.4 個框（ANN 6.7）</div>
+  <div class="meta">每幀能耗 0.390 mJ（0.383–0.398）＝同一張圖 INT8 ANN 的 0.43× · 每神經元 0.93 個脈衝</div></header>
+  <video controls muted loop playsinline preload="metadata" src="road/a06_bengaluru_bellary_road.mp4"></video>
+  <div class="row"><span class="lab">預期類別</span><span class="vals"><span class="cls bad"><b>motorbike</b> 12%<small> · 0.13/張 · ANN 17%</small></span><span class="cls bad"><b>person</b> 30%<small> · 0.38/張 · ANN 25%</small></span><span class="cls good"><b>car</b> 100%<small> · 5.83/張 · ANN 100%</small></span></span></div>
+  <div class="row"><span class="lab">其他類別</span><span class="vals small">—</span></div>
+  <div class="lic">CC BY-SA 4.0：Bellary Road, Bengaluru (2026) 01 by Gpkp, CC BY-SA 4.0, via Wikimedia Commons</div>
+</article>
+<article class="card" data-worst="0.126" data-gap="0.377">
+  <header><h3>a07　印度 班加羅爾 Dr. Rajkumar Road，天橋俯拍、晴天</h3>
+  <div class="meta">a07_bangalore_rajkumar_road · 1218 幀 · 30.00 fps · 平均每張 10.4 個框（ANN 11.3）</div>
+  <div class="meta">每幀能耗 0.412 mJ（0.406–0.422）＝同一張圖 INT8 ANN 的 0.45× · 每神經元 1.00 個脈衝</div></header>
+  <video controls muted loop playsinline preload="metadata" src="road/a07_bangalore_rajkumar_road.mp4"></video>
+  <div class="row"><span class="lab">預期類別</span><span class="vals"><span class="cls bad"><b>bus</b> 13%<small> · 0.13/張 · ANN 50%</small></span><span class="cls mid"><b>motorbike</b> 47%<small> · 0.63/張 · ANN 46%</small></span><span class="cls mid"><b>person</b> 73%<small> · 1.33/張 · ANN 76%</small></span><span class="cls good"><b>car</b> 100%<small> · 8.24/張 · ANN 100%</small></span></span></div>
+  <div class="row"><span class="lab">其他類別</span><span class="vals small">—</span></div>
+  <div class="lic">CC BY-SA 4.0：Dr. Rajkumar Road, Bangalore (2025) by Gpkp, CC BY-SA 4.0, via Wikimedia Commons</div>
+</article>
+<article class="card" data-worst="0.057" data-gap="0.095">
+  <header><h3>a08　越南 順化近郊，第一人稱騎機車、會晃</h3>
+  <div class="meta">a08_hue_motorbike_ride · 2034 幀 · 29.97 fps · 平均每張 2.5 個框（ANN 3.0）</div>
+  <div class="meta">每幀能耗 0.377 mJ（0.352–0.402）＝同一張圖 INT8 ANN 的 0.41× · 每神經元 0.88 個脈衝</div></header>
+  <video controls muted loop playsinline preload="metadata" src="road/a08_hue_motorbike_ride.mp4"></video>
+  <div class="row"><span class="lab">預期類別</span><span class="vals"><span class="cls mid"><b>motorbike</b> 51%<small> · 0.87/張 · ANN 60%</small></span><span class="cls mid"><b>person</b> 64%<small> · 1.28/張 · ANN 68%</small></span><span class="cls bad"><b>car</b> 21%<small> · 0.23/張 · ANN 21%</small></span><span class="cls bad"><b>bicycle</b> 6%<small> · 0.07/張 · ANN 7%</small></span></span></div>
+  <div class="row"><span class="lab">其他類別</span><span class="vals small">—</span></div>
+  <div class="lic">CC BY-SA 4.0：Veturado sur motorciklo apud Hue by RG72, CC BY-SA 4.0, via Wikimedia Commons</div>
+</article>
+<article class="card" data-worst="0.484" data-gap="0.113">
+  <header><h3>a09　泰國 清邁路口，固定機位，汽車為主</h3>
+  <div class="meta">a09_chiangmai_intersection · 434 幀 · 29.97 fps · 平均每張 7.4 個框（ANN 8.3）</div>
+  <div class="meta">每幀能耗 0.400 mJ（0.393–0.411）＝同一張圖 INT8 ANN 的 0.44× · 每神經元 0.96 個脈衝</div></header>
+  <video controls muted loop playsinline preload="metadata" src="road/a09_chiangmai_intersection.mp4"></video>
+  <div class="row"><span class="lab">預期類別</span><span class="vals"><span class="cls good"><b>car</b> 100%<small> · 4.79/張 · ANN 100%</small></span><span class="cls mid"><b>motorbike</b> 48%<small> · 0.81/張 · ANN 60%</small></span><span class="cls mid"><b>person</b> 90%<small> · 1.83/張 · ANN 92%</small></span></span></div>
+  <div class="row"><span class="lab">其他類別</span><span class="vals small">—</span></div>
+  <div class="lic">CC BY-SA 4.0：A intersection with traffic in Chiang Mai, Thailand by Amada44, CC BY-SA 4.0, via Wikimedia Commons</div>
+</article>
+<article class="card" data-worst="0.000" data-gap="0.000">
+  <header><h3>a10　台灣，天橋下路口，機車停等、行人穿越</h3>
+  <div class="meta">a10_taiwan_motorcycles_city · 260 幀 · 25.00 fps · 平均每張 12.4 個框（ANN 14.2）</div>
+  <div class="meta">每幀能耗 0.422 mJ（0.419–0.423）＝同一張圖 INT8 ANN 的 0.46× · 每神經元 1.03 個脈衝</div></header>
+  <video controls muted loop playsinline preload="metadata" src="road/a10_taiwan_motorcycles_city.mp4"></video>
+  <div class="row"><span class="lab">預期類別</span><span class="vals"><span class="cls good"><b>motorbike</b> 100%<small> · 5.93/張 · ANN 100%</small></span><span class="cls good"><b>person</b> 100%<small> · 6.43/張 · ANN 100%</small></span><span class="cls bad"><b>bus</b> 0%<small> · 0.00/張 · ANN 0%</small></span></span></div>
+  <div class="row"><span class="lab">其他類別</span><span class="vals small">—</span></div>
+  <div class="lic">Pexels License：Video by Allen Low on Pexels (attribution optional)</div>
+</article>
+<article class="card" data-worst="0.989" data-gap="0.003">
+  <header><h3>a11　台灣 台北，機車停等紅燈、行人走斑馬線</h3>
+  <div class="meta">a11_taipei_traffic_light · 796 幀 · 25.00 fps · 平均每張 11.6 個框（ANN 12.6）</div>
+  <div class="meta">每幀能耗 0.435 mJ（0.366–0.443）＝同一張圖 INT8 ANN 的 0.48× · 每神經元 1.07 個脈衝</div></header>
+  <video controls muted loop playsinline preload="metadata" src="road/a11_taipei_traffic_light.mp4"></video>
+  <div class="row"><span class="lab">預期類別</span><span class="vals"><span class="cls good"><b>motorbike</b> 99%<small> · 2.81/張 · ANN 99%</small></span><span class="cls good"><b>person</b> 100%<small> · 5.83/張 · ANN 100%</small></span><span class="cls good"><b>car</b> 99%<small> · 2.87/張 · ANN 100%</small></span></span></div>
+  <div class="row"><span class="lab">其他類別</span><span class="vals small">bicycle 0.08/張</span></div>
+  <div class="lic">Pexels License：Video by Levi Wedge on Pexels (attribution optional)</div>
+</article>
+<article class="card" data-worst="0.256" data-gap="0.251">
+  <header><h3>a12　台灣 台北路口</h3>
+  <div class="meta">a12_taipei_busy_street · 2809 幀 · 25.00 fps · 平均每張 2.2 個框（ANN 2.4）</div>
+  <div class="meta">每幀能耗 0.417 mJ（0.414–0.429）＝同一張圖 INT8 ANN 的 0.46× · 每神經元 1.05 個脈衝</div></header>
+  <video controls muted loop playsinline preload="metadata" src="road/a12_taipei_busy_street.mp4"></video>
+  <div class="row"><span class="lab">預期類別</span><span class="vals"><span class="cls bad"><b>motorbike</b> 26%<small> · 0.35/張 · ANN 51%</small></span><span class="cls mid"><b>person</b> 72%<small> · 1.36/張 · ANN 62%</small></span><span class="cls mid"><b>car</b> 33%<small> · 0.40/張 · ANN 36%</small></span></span></div>
+  <div class="row"><span class="lab">其他類別</span><span class="vals small">bus 0.06/張</span></div>
+  <div class="lic">Pexels License：Video by Levi Wedge on Pexels (attribution optional)</div>
+</article>
+<article class="card" data-worst="0.928" data-gap="0.058">
+  <header><h3>a13　印尼 峇里島窄巷，迎面而來的機車；騎士的臉看得清楚</h3>
+  <div class="meta">a13_bali_scooter_street · 849 幀 · 29.97 fps · 平均每張 5.4 個框（ANN 6.4）</div>
+  <div class="meta">每幀能耗 0.409 mJ（0.394–0.424）＝同一張圖 INT8 ANN 的 0.45× · 每神經元 0.97 個脈衝</div></header>
+  <video controls muted loop playsinline preload="metadata" src="road/a13_bali_scooter_street.mp4"></video>
+  <div class="row"><span class="lab">預期類別</span><span class="vals"><span class="cls good"><b>motorbike</b> 93%<small> · 2.31/張 · ANN 99%</small></span><span class="cls good"><b>person</b> 100%<small> · 3.08/張 · ANN 100%</small></span></span></div>
+  <div class="row"><span class="lab">其他類別</span><span class="vals small">pottedplant 0.05/張</span></div>
+  <div class="lic">Pexels License：Video by Sergei Starostin on Pexels (attribution optional)</div>
+</article></div></section><section id="voc_other"><h2>其他 VOC 類別<small>12 支</small></h2><div class="grid">
+<article class="card" data-worst="0.656" data-gap="0.124">
+  <header><h3>b01　747 貨機起降（機場沒標）</h3>
+  <div class="meta">b01_cargo_747_landing · 3600 幀 · 29.97 fps · 平均每張 0.7 個框（ANN 0.8）</div>
+  <div class="meta">每幀能耗 0.366 mJ（0.323–0.398）＝同一張圖 INT8 ANN 的 0.40× · 每神經元 0.83 個脈衝</div></header>
+  <video controls muted loop playsinline preload="metadata" src="voc_other/b01_cargo_747_landing.mp4"></video>
+  <div class="row"><span class="lab">預期類別</span><span class="vals"><span class="cls mid"><b>aeroplane</b> 66%<small> · 0.69/張 · ANN 78%</small></span></span></div>
+  <div class="row"><span class="lab">其他類別</span><span class="vals small">—</span></div>
+  <div class="lic">CC BY 3.0：Plane Spotting China airlines Cargo 747-400 B-2425 CK262 takeoff and landing (Typhoon delayed) by small Jia, CC BY 3.0, via Wikimedia Commons</div>
+</article>
+<article class="card" data-worst="0.221" data-gap="0.056">
+  <header><h3>b02　印度 喀拉拉邦 龍舟賽，船身很長、坐滿划手</h3>
+  <div class="meta">b02_kerala_boat_race · 589 幀 · 25.00 fps · 平均每張 2.6 個框（ANN 2.6）</div>
+  <div class="meta">每幀能耗 0.404 mJ（0.395–0.411）＝同一張圖 INT8 ANN 的 0.44× · 每神經元 1.01 個脈衝</div></header>
+  <video controls muted loop playsinline preload="metadata" src="voc_other/b02_kerala_boat_race.mp4"></video>
+  <div class="row"><span class="lab">預期類別</span><span class="vals"><span class="cls bad"><b>boat</b> 22%<small> · 0.23/張 · ANN 21%</small></span><span class="cls mid"><b>person</b> 66%<small> · 2.33/張 · ANN 72%</small></span></span></div>
+  <div class="row"><span class="lab">其他類別</span><span class="vals small">—</span></div>
+  <div class="lic">CC BY-SA 4.0：NehruTrophyBoatRaceIruttukuthiAGradeFinal2025 by Varghesepunnamada, CC BY-SA 4.0, via Wikimedia Commons</div>
+</article>
+<article class="card" data-worst="0.800" data-gap="0.078">
+  <header><h3>b03　日本 東京，停在欄杆上的鴿子</h3>
+  <div class="meta">b03_tokyo_rock_dove · 2077 幀 · 23.98 fps · 平均每張 1.1 個框（ANN 1.4）</div>
+  <div class="meta">每幀能耗 0.388 mJ（0.371–0.407）＝同一張圖 INT8 ANN 的 0.43× · 每神經元 0.89 個脈衝</div></header>
+  <video controls muted loop playsinline preload="metadata" src="voc_other/b03_tokyo_rock_dove.mp4"></video>
+  <div class="row"><span class="lab">預期類別</span><span class="vals"><span class="cls mid"><b>bird</b> 80%<small> · 1.11/張 · ANN 88%</small></span></span></div>
+  <div class="row"><span class="lab">其他類別</span><span class="vals small">—</span></div>
+  <div class="lic">CC BY-SA 3.0：Rock dove (Columba livia) in Tokyo by The Nature Box, CC BY-SA 3.0, via Wikimedia Commons</div>
+</article>
+<article class="card" data-worst="0.203" data-gap="0.202">
+  <header><h3>b04　愛沙尼亞，貓抓老鼠、狗（公開前先看過內容）</h3>
+  <div class="meta">b04_estonia_cat_dog · 2131 幀 · 25.00 fps · 平均每張 1.4 個框（ANN 1.4）</div>
+  <div class="meta">每幀能耗 0.397 mJ（0.350–0.408）＝同一張圖 INT8 ANN 的 0.44× · 每神經元 0.99 個脈衝</div></header>
+  <video controls muted loop playsinline preload="metadata" src="voc_other/b04_estonia_cat_dog.mp4"></video>
+  <div class="row"><span class="lab">預期類別</span><span class="vals"><span class="cls mid"><b>cat</b> 50%<small> · 0.51/張 · ANN 70%</small></span><span class="cls mid"><b>dog</b> 54%<small> · 0.66/張 · ANN 42%</small></span><span class="cls bad"><b>car</b> 20%<small> · 0.20/張 · ANN 23%</small></span></span></div>
+  <div class="row"><span class="lab">其他類別</span><span class="vals small">—</span></div>
+  <div class="lic">CC BY-SA 4.0：Hiirepyyk kass koer 2022 by Sillerkiil, CC BY-SA 4.0, via Wikimedia Commons</div>
+</article>
+<article class="card" data-worst="0.871" data-gap="0.094">
+  <header><h3>b05　美國 舊金山，人行道上遛狗，跟拍</h3>
+  <div class="meta">b05_sf_dog_walking · 404 幀 · 24.00 fps · 平均每張 4.7 個框（ANN 5.9）</div>
+  <div class="meta">每幀能耗 0.392 mJ（0.381–0.402）＝同一張圖 INT8 ANN 的 0.43× · 每神經元 0.92 個脈衝</div></header>
+  <video controls muted loop playsinline preload="metadata" src="voc_other/b05_sf_dog_walking.mp4"></video>
+  <div class="row"><span class="lab">預期類別</span><span class="vals"><span class="cls mid"><b>dog</b> 87%<small> · 0.87/張 · ANN 96%</small></span><span class="cls mid"><b>car</b> 87%<small> · 2.36/張 · ANN 97%</small></span></span></div>
+  <div class="row"><span class="lab">其他類別</span><span class="vals small">person 1.14/張、bicycle 0.23/張</span></div>
+  <div class="lic">CC BY-SA 3.0：Dog walking in the Mission in San Francisco by Sage Ross, CC BY-SA 3.0, via Wikimedia Commons</div>
+</article>
+<article class="card" data-worst="0.984" data-gap="0.004">
+  <header><h3>b06　美國 伊利諾州，牧場奔馬，馬在畫面裡偏小</h3>
+  <div class="meta">b06_horses_pasture · 2025 幀 · 29.97 fps · 平均每張 2.9 個框（ANN 3.2）</div>
+  <div class="meta">每幀能耗 0.377 mJ（0.365–0.415）＝同一張圖 INT8 ANN 的 0.41× · 每神經元 0.95 個脈衝</div></header>
+  <video controls muted loop playsinline preload="metadata" src="voc_other/b06_horses_pasture.mp4"></video>
+  <div class="row"><span class="lab">預期類別</span><span class="vals"><span class="cls good"><b>horse</b> 98%<small> · 2.60/張 · ANN 99%</small></span></span></div>
+  <div class="row"><span class="lab">其他類別</span><span class="vals small">cow 0.16/張、person 0.09/張</span></div>
+  <div class="lic">CC BY 3.0：Horses running in a pasture by Field of Dreams, CC BY 3.0, via Wikimedia Commons</div>
+</article>
+<article class="card" data-worst="0.977" data-gap="0.008">
+  <header><h3>b07　法國 Jura，牛群走在鄉間小路</h3>
+  <div class="meta">b07_jura_cow_herd · 1493 幀 · 24.00 fps · 平均每張 4.2 個框（ANN 4.5）</div>
+  <div class="meta">每幀能耗 0.396 mJ（0.355–0.409）＝同一張圖 INT8 ANN 的 0.44× · 每神經元 0.98 個脈衝</div></header>
+  <video controls muted loop playsinline preload="metadata" src="voc_other/b07_jura_cow_herd.mp4"></video>
+  <div class="row"><span class="lab">預期類別</span><span class="vals"><span class="cls good"><b>cow</b> 98%<small> · 4.11/張 · ANN 98%</small></span></span></div>
+  <div class="row"><span class="lab">其他類別</span><span class="vals small">—</span></div>
+  <div class="lic">CC0：Video: Benoit Prieur, CC0, via Wikimedia Commons (attribution optional)</div>
+</article>
+<article class="card" data-worst="0.111" data-gap="0.134">
+  <header><h3>b08　亞美尼亞 往 Sevan 湖的公路，羊群占滿馬路，後面跟著公車和汽車</h3>
+  <div class="meta">b08_armenia_sheep_road · 468 幀 · 25.00 fps · 平均每張 15.6 個框（ANN 21.0）</div>
+  <div class="meta">每幀能耗 0.394 mJ（0.389–0.400）＝同一張圖 INT8 ANN 的 0.43× · 每神經元 0.94 個脈衝</div></header>
+  <video controls muted loop playsinline preload="metadata" src="voc_other/b08_armenia_sheep_road.mp4"></video>
+  <div class="row"><span class="lab">預期類別</span><span class="vals"><span class="cls good"><b>sheep</b> 96%<small> · 7.10/張 · ANN 100%</small></span><span class="cls good"><b>person</b> 100%<small> · 1.62/張 · ANN 100%</small></span><span class="cls bad"><b>bus</b> 11%<small> · 0.11/張 · ANN 13%</small></span><span class="cls mid"><b>car</b> 84%<small> · 1.26/張 · ANN 97%</small></span></span></div>
+  <div class="row"><span class="lab">其他類別</span><span class="vals small">cow 5.45/張</span></div>
+  <div class="lic">CC BY 2.0：Traffic chaos by gails_pictures (Flickr), CC BY 2.0, via Wikimedia Commons</div>
+</article>
+<article class="card" data-worst="0.044" data-gap="0.151">
+  <header><h3>b09　荷蘭 Utrecht，大量停放的腳踏車</h3>
+  <div class="meta">b09_utrecht_bicycles · 2162 幀 · 60.00 fps · 平均每張 1.9 個框（ANN 2.8）</div>
+  <div class="meta">每幀能耗 0.410 mJ（0.377–0.424）＝同一張圖 INT8 ANN 的 0.45× · 每神經元 1.00 個脈衝</div></header>
+  <video controls muted loop playsinline preload="metadata" src="voc_other/b09_utrecht_bicycles.mp4"></video>
+  <div class="row"><span class="lab">預期類別</span><span class="vals"><span class="cls mid"><b>bicycle</b> 72%<small> · 1.49/張 · ANN 87%</small></span><span class="cls bad"><b>car</b> 4%<small> · 0.05/張 · ANN 1%</small></span></span></div>
+  <div class="row"><span class="lab">其他類別</span><span class="vals small">motorbike 0.24/張、person 0.15/張</span></div>
+  <div class="lic">CC BY-SA 4.0：Utrecht Centrumzijde 101802 by Quahadi, CC BY-SA 4.0, via Wikimedia Commons</div>
+</article>
+<article class="card" data-worst="0.144" data-gap="0.050">
+  <header><h3>b10　沒人的客廳，鏡頭慢慢移（地點沒標）</h3>
+  <div class="meta">b10_living_room_tv_sofa · 810 幀 · 29.97 fps · 平均每張 3.4 個框（ANN 4.4）</div>
+  <div class="meta">每幀能耗 0.400 mJ（0.396–0.402）＝同一張圖 INT8 ANN 的 0.44× · 每神經元 0.94 個脈衝</div></header>
+  <video controls muted loop playsinline preload="metadata" src="voc_other/b10_living_room_tv_sofa.mp4"></video>
+  <div class="row"><span class="lab">預期類別</span><span class="vals"><span class="cls good"><b>sofa</b> 99%<small> · 1.80/張 · ANN 100%</small></span><span class="cls bad"><b>tvmonitor</b> 14%<small> · 0.14/張 · ANN 16%</small></span><span class="cls good"><b>pottedplant</b> 94%<small> · 0.94/張 · ANN 99%</small></span></span></div>
+  <div class="row"><span class="lab">其他類別</span><span class="vals small">chair 0.45/張</span></div>
+  <div class="lic">Pexels License：Video by Curtis Adams on Pexels (attribution optional)</div>
+</article>
+<article class="card" data-worst="0.049" data-gap="0.417">
+  <header><h3>b11　泰國 普吉 咖啡店內部</h3>
+  <div class="meta">b11_cafe_interior · 1152 幀 · 29.97 fps · 平均每張 5.2 個框（ANN 6.8）</div>
+  <div class="meta">每幀能耗 0.412 mJ（0.409–0.415）＝同一張圖 INT8 ANN 的 0.45× · 每神經元 0.99 個脈衝</div></header>
+  <video controls muted loop playsinline preload="metadata" src="voc_other/b11_cafe_interior.mp4"></video>
+  <div class="row"><span class="lab">預期類別</span><span class="vals"><span class="cls good"><b>chair</b> 100%<small> · 3.80/張 · ANN 100%</small></span><span class="cls bad"><b>diningtable</b> 22%<small> · 0.22/張 · ANN 64%</small></span><span class="cls bad"><b>pottedplant</b> 5%<small> · 0.05/張 · ANN 7%</small></span><span class="cls mid"><b>person</b> 69%<small> · 1.14/張 · ANN 77%</small></span></span></div>
+  <div class="row"><span class="lab">其他類別</span><span class="vals small">—</span></div>
+  <div class="lic">Pexels License：Video by Peggy Anke on Pexels (attribution optional)</div>
+</article>
+<article class="card" data-worst="1.000" data-gap="0.000">
+  <header><h3>b12　酒吧酒櫃，瓶子小、背景逆光（地點沒標）</h3>
+  <div class="meta">b12_bar_bottles · 463 幀 · 24.00 fps · 平均每張 21.7 個框（ANN 36.8）</div>
+  <div class="meta">每幀能耗 0.396 mJ（0.393–0.399）＝同一張圖 INT8 ANN 的 0.47× · 每神經元 1.08 個脈衝</div></header>
+  <video controls muted loop playsinline preload="metadata" src="voc_other/b12_bar_bottles.mp4"></video>
+  <div class="row"><span class="lab">預期類別</span><span class="vals"><span class="cls good"><b>bottle</b> 100%<small> · 21.66/張 · ANN 100%</small></span></span></div>
+  <div class="row"><span class="lab">其他類別</span><span class="vals small">—</span></div>
+  <div class="lic">Pexels License：Video by K (kelly) on Pexels (attribution optional)</div>
+</article></div></section><section id="vkitti2"><h2>vKITTI2 合成行車<small>5 支</small></h2><div class="grid">
+<article class="card" data-worst="0.953" data-gap="0.000">
+  <header><h3>scene01　Virtual KITTI 2 合成（Unity）行車畫面，Scene01 clone（原版、不加天氣）；有廂型車、卡車，沒有機車和行人</h3>
+  <div class="meta">vkitti2_scene01_clone · 447 幀 · 10.00 fps · 平均每張 5.0 個框（ANN 5.2）</div>
+  <div class="meta">每幀能耗 0.236 mJ（0.227–0.247）＝同一張圖 INT8 ANN 的 0.45× · 每神經元 1.00 個脈衝</div></header>
+  <video controls muted loop playsinline preload="metadata" src="vkitti2/vkitti2_scene01_clone.mp4"></video>
+  <div class="row"><span class="lab">預期類別</span><span class="vals"><span class="cls good"><b>car</b> 95%<small> · 4.96/張 · ANN 95%</small></span></span></div>
+  <div class="row"><span class="lab">其他類別</span><span class="vals small">person 0.07/張</span></div>
+  <div class="lic">CC BY-NC-SA 3.0：Virtual KITTI 2 - Cabon et al. 2020 - Naver Labs Europe</div>
+</article>
+<article class="card" data-worst="0.717" data-gap="0.081">
+  <header><h3>scene02　同上，Scene02 雨天</h3>
+  <div class="meta">vkitti2_scene02_rain · 233 幀 · 10.00 fps · 平均每張 2.6 個框（ANN 2.9）</div>
+  <div class="meta">每幀能耗 0.223 mJ（0.219–0.227）＝同一張圖 INT8 ANN 的 0.42× · 每神經元 0.90 個脈衝</div></header>
+  <video controls muted loop playsinline preload="metadata" src="vkitti2/vkitti2_scene02_rain.mp4"></video>
+  <div class="row"><span class="lab">預期類別</span><span class="vals"><span class="cls mid"><b>car</b> 72%<small> · 2.10/張 · ANN 80%</small></span></span></div>
+  <div class="row"><span class="lab">其他類別</span><span class="vals small">person 0.29/張、bus 0.17/張</span></div>
+  <div class="lic">CC BY-NC-SA 3.0：Virtual KITTI 2 - Cabon et al. 2020 - Naver Labs Europe</div>
+</article>
+<article class="card" data-worst="0.463" data-gap="0.222">
+  <header><h3>scene06　同上，Scene06 霧</h3>
+  <div class="meta">vkitti2_scene06_fog · 270 幀 · 10.00 fps · 平均每張 1.0 個框（ANN 1.4）</div>
+  <div class="meta">每幀能耗 0.211 mJ（0.204–0.218）＝同一張圖 INT8 ANN 的 0.40× · 每神經元 0.82 個脈衝</div></header>
+  <video controls muted loop playsinline preload="metadata" src="vkitti2/vkitti2_scene06_fog.mp4"></video>
+  <div class="row"><span class="lab">預期類別</span><span class="vals"><span class="cls mid"><b>car</b> 46%<small> · 0.96/張 · ANN 68%</small></span></span></div>
+  <div class="row"><span class="lab">其他類別</span><span class="vals small">—</span></div>
+  <div class="lic">CC BY-NC-SA 3.0：Virtual KITTI 2 - Cabon et al. 2020 - Naver Labs Europe</div>
+</article>
+<article class="card" data-worst="0.864" data-gap="0.021">
+  <header><h3>scene18　同上，Scene18 夕陽</h3>
+  <div class="meta">vkitti2_scene18_sunset · 339 幀 · 10.00 fps · 平均每張 3.3 個框（ANN 3.5）</div>
+  <div class="meta">每幀能耗 0.230 mJ（0.223–0.238）＝同一張圖 INT8 ANN 的 0.43× · 每神經元 1.00 個脈衝</div></header>
+  <video controls muted loop playsinline preload="metadata" src="vkitti2/vkitti2_scene18_sunset.mp4"></video>
+  <div class="row"><span class="lab">預期類別</span><span class="vals"><span class="cls mid"><b>car</b> 86%<small> · 3.31/張 · ANN 88%</small></span></span></div>
+  <div class="row"><span class="lab">其他類別</span><span class="vals small">—</span></div>
+  <div class="lic">CC BY-NC-SA 3.0：Virtual KITTI 2 - Cabon et al. 2020 - Naver Labs Europe</div>
+</article>
+<article class="card" data-worst="0.992" data-gap="0.007">
+  <header><h3>scene20　同上，Scene20 早晨</h3>
+  <div class="meta">vkitti2_scene20_morning · 837 幀 · 10.00 fps · 平均每張 4.3 個框（ANN 4.3）</div>
+  <div class="meta">每幀能耗 0.230 mJ（0.219–0.238）＝同一張圖 INT8 ANN 的 0.43× · 每神經元 0.99 個脈衝</div></header>
+  <video controls muted loop playsinline preload="metadata" src="vkitti2/vkitti2_scene20_morning.mp4"></video>
+  <div class="row"><span class="lab">預期類別</span><span class="vals"><span class="cls good"><b>car</b> 99%<small> · 4.22/張 · ANN 100%</small></span></span></div>
+  <div class="row"><span class="lab">其他類別</span><span class="vals small">—</span></div>
+  <div class="lic">CC BY-NC-SA 3.0：Virtual KITTI 2 - Cabon et al. 2020 - Naver Labs Europe</div>
+</article></div></section>
+
+<section id="license"><h2>影片來源與授權</h2>
+<ul class="intro">
+<li>每支影片卡片下方都列出原作者與授權。這裡的影片都是改作：每一幀加上了偵測框和上方的狀態列，並縮成 854×480 重新壓縮。</li>
+<li>依原授權提供：CC BY-SA 3.0／4.0 的改作以同一授權（CC BY-SA，同版本）提供；CC BY 2.0／3.0／4.0 需署名；vKITTI2（Cabon et al. 2020, Naver Labs Europe）是 CC BY-NC-SA 3.0，只限非商業用途；CC0、Pexels License、Pixabay Content License 不需署名。</li>
+<li>這是研究用的 demo：影片沒有標註框，頁面上的數字是「有框的畫面比例」，不是準確率；偵測結果可能有誤。</li>
+</ul></section>
+</main>
+<script>
+const W = document.getElementById('weak'), G = document.getElementById('gap');
+function apply() {
+  document.querySelectorAll('.card').forEach(c => c.classList.toggle('hide',
+    (W.checked && parseFloat(c.dataset.worst) >= 0.9) || (G.checked && parseFloat(c.dataset.gap) < 0.1)));
+}
+W.addEventListener('change', apply); G.addEventListener('change', apply);
+</script>
+</body></html>
