@@ -40,10 +40,10 @@ video { width:100%; border-radius:8px; background:#000; display:block; }
 <li>能耗是運算次數的估計（INT8 常數）：第 0 層吃像素的乘加 0.23 pJ，之後每個脈衝 × 扇出各算一次加法 0.1 pJ；對照是同一張圖跑 INT8 ANN 的乘加。不含記憶體存取。</li>
 
 </ul>
-<p class="tnote"><b>訓練資料：四個模型都只用 PASCAL VOC 訓練</b>（VOC2007＋2012 trainval，16,551 張、20 類；從 COCO 預訓練的權重開始），在 VOC2007 test（4,952 張）上評估。下面的影片都不在訓練資料裡。</p>
-<table class="pt"><thead><tr><th>模型</th><th>訓練資料</th><th>台灣行車視角 ↑</th><th>道路（機車＋行人） ↑</th><th>其他 VOC 類別 ↑</th><th>vKITTI2 合成行車 ↑</th></tr></thead><tbody><tr><td><b>T0⁺ v7-tiny ANN fp32（基準；VOC07 0.848）</b></td><td>PASCAL VOC 07＋12</td><td>60%</td><td>61%</td><td>70%</td><td>86%</td></tr><tr><td>T0⁺ v7-tiny SNN D=4／2 全整數（本頁；VOC07 0.798）</td><td>PASCAL VOC 07＋12</td><td>55%</td><td>57%</td><td>64%</td><td>80%</td></tr><tr class="sub"><td>參考：V6N 剪寬度 2.99 M ANN（VOC07 0.817）</td><td>PASCAL VOC 07＋12</td><td>53%</td><td>56%</td><td>63%</td><td>83%</td></tr><tr class="sub"><td>參考：v7-tiny 剪枝 2.48 M SNN D=8／2（VOC07 0.790）</td><td>PASCAL VOC 07＋12</td><td>61%</td><td>61%</td><td>71%</td><td>87%</td></tr>
+<p class="tnote"><b>訓練資料：兩個模型都只用 PASCAL VOC 訓練</b>（VOC2007＋2012 trainval，16,551 張、20 類；從 COCO 預訓練的權重開始），在 VOC2007 test（4,952 張）上評估。下面的影片都不在訓練資料裡。</p>
+<table class="pt"><thead><tr><th>模型</th><th>訓練資料</th><th>台灣行車視角 ↑</th><th>道路（機車＋行人） ↑</th><th>其他 VOC 類別 ↑</th><th>vKITTI2 合成行車 ↑</th></tr></thead><tbody><tr><td><b>T0⁺ v7-tiny ANN fp32（基準；VOC07 0.848）</b></td><td>PASCAL VOC 07＋12</td><td>60%</td><td>61%</td><td>70%</td><td>86%</td></tr><tr><td>T0⁺ v7-tiny SNN D=4／2 全整數（本頁；VOC07 0.798）</td><td>PASCAL VOC 07＋12</td><td>55%</td><td>57%</td><td>64%</td><td>80%</td></tr>
 <tr class="sub"><td>SNN 比 ANN 少 10 分以上的影片</td><td></td><td>2 / 4</td><td>6 / 13</td><td>5 / 12</td><td>1 / 5</td></tr></tbody></table>
-<p class="tnote">表中數字＝各組所有「影片 × 預期類別」的有框畫面比例平均；第一列是基準（同一個網路的浮點 ANN），灰字兩列是之前 demo 的模型。</p>
+<p class="tnote">表中數字＝各組所有「影片 × 預期類別」的有框畫面比例平均；第一列是基準（同一個網路的浮點 ANN）。</p>
 <table class="pt"><thead><tr><th>每幀（平均）</th><th>台灣行車視角</th><th>道路（機車＋行人）</th><th>其他 VOC 類別</th><th>vKITTI2 合成行車</th></tr></thead><tbody>
 <tr><td>INT8 ANN 的能耗 mJ（基準）</td><td>0.910</td><td>0.914</td><td>0.908</td><td>0.531</td></tr>
 <tr><td>SNN 的能耗 mJ ↓</td><td>0.402</td><td>0.407</td><td>0.390</td><td>0.228</td></tr>
