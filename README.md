@@ -1,6 +1,6 @@
 # T0⁺ YOLOv7-tiny 脈衝神經網路（SNN）demo 影片
 
-**線上觀看：** https://<帳號>.github.io/snn-yolov7tiny-demo/
+**線上觀看：** https://pekoranoinu.github.io/snn-yolov7tiny-demo/
 
 把 VOC 訓練的 YOLOv7-tiny 轉成**整數脈衝神經網路（SNN）**，在 34 支公開授權的影片上逐幀做物件偵測，並和同一個網路的浮點版（ANN）比較。每支影片都附上 SNN 的偵測結果、各類別「有框的畫面比例」和每幀的估計能耗。
 
